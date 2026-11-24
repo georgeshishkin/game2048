@@ -104,6 +104,7 @@
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             aspect-ratio: 1;
+            position: relative;
         }
 
         .cell {
@@ -432,6 +433,13 @@
         function render() {
             const board = document.getElementById('board');
             const boardRect = board.getBoundingClientRect();
+
+            // Если board ещё не загружен — пробуем позже
+            if (boardRect.width === 0 || boardRect.height === 0) {
+                setTimeout(render, 100);
+                return;
+            }
+
             const gap = 10;
             const padding = 10;
             const cellSize = (boardRect.width - padding * 2 - gap * (SIZE - 1)) / SIZE;
@@ -474,7 +482,8 @@
                     const x = padding + c * (cellSize + gap);
                     const y = padding + r * (cellSize + gap);
 
-                    tile.style.transform = `translate(${x}px, ${y}px)`;
+                    tile.style.left = x + 'px';
+                    tile.style.top = y + 'px';
                     newTileMap[key] = tile;
                 }
             }

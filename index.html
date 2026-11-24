@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048 — Telegram</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #faf8ef;
+            padding: 16px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 48px;
+            font-weight: 800;
+            color: #776e65;
+            margin-bottom: 8px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .scores {
+            display: flex;
+            gap: 8px;
+        }
+
+        .score-box {
+            background: #bbada0;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .score-box .label {
+            font-size: 11px;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .score-box .value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        button {
+            flex: 1;
+            background: #8f7a66;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #9f8b77;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .board {
+            background: #bbada0;
+            border-radius: 10px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            background: rgba(238, 228, 218, 0.35);
+            border-radius: 6px;
+        }
+
+        .tile {
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 800;
+            border-radius: 6px;
+            transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease;
+            will-change: transform;
+        }
+
+        .tile-new {
+            animation: tileAppear 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .tile-merged {
+            animation: tileMerge 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 10;
+        }
+
+        @keyframes tileAppear {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes tileMerge {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .tile-2 { background: #eee4da; color: #776e65; }
+        .tile-4 { background: #ede0c8; color: #776e65; }
+        .tile-8 { background: #f2b179; color: #f9f6f2; }
+        .tile-16 { background: #f59563; color: #f9f6f2; }
+        .tile-32 { background: #f67c5f; color: #f9f6f2; }
+        .tile-64 { background: #f65e3b; color: #f9f6f2; }
+        .tile-128 { background: #edcf72; color: #f9f6f2; font-size: 0.6em; }
+        .tile-256 { background: #edcc61; color: #f9f6f2; font-size: 0.6em; }
+        .tile-512 { background: #edc850; color: #f9f6f2; font-size: 0.6em; }
+        .tile-1024 { background: #edc53f; color: #f9f6f2; font-size: 0.5em; }
+        .tile-2048 { background: #edc22e; color: #f9f6f2; font-size: 0.5em; }
+        .tile-super { background: #3c3a32; color: #f9f6f2; font-size: 0.45em; }
+
+        .game-over {
+            position: absolute;
+            inset: 0;
+            background: rgba(238, 228, 218, 0.73);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 100;
+        }
+
+        .game-over h2 {
+            font-size: 36px;
+            color: #776e65;
+            margin-bottom: 16px;
+        }
+
+        .game-container {
+            position: relative;
+        }
+
+        .swipe-hint {
+            margin-top: 16px;
+            color: #776e65;
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        /* Лидерборд */
+        .leaderboard-btn {
+            background: #8f7a66;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 16px;
+            transition: background 0.2s;
+        }
+        .leaderboard-btn:hover { background: #9f8b77; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: #faf8ef;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 360px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            text-align: center;
+        }
+        .modal h2 {
+            color: #776e65;
+            margin-bottom: 16px;
+            font-size: 24px;
+        }
+        .modal-close {
+            background: #bbada0;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 16px;
+        }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+        }
+        .leaderboard-list li {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: #eee4da;
+            border-radius: 6px;
+            font-size: 15px;
+            color: #776e65;
+            font-weight: 600;
+        }
+        .leaderboard-list li:nth-child(1) { background: #edc22e; color: #f9f6f2; }
+        .leaderboard-list li:nth-child(2) { background: #b0b0b0; color: #f9f6f2; }
+        .leaderboard-list li:nth-child(3) { background: #cd7f32; color: #f9f6f2; }
+        .lb-name { flex: 1; text-align: left; }
+        .lb-score { margin-left: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>2048</h1>
+            <div class="scores">
+                <div class="score-box">
+                    <div class="label">Счёт</div>
+                    <div class="value" id="score">0</div>
+                </div>
+                <div class="score-box">
+                    <div class="label">Лучший</div>
+                    <div class="value" id="best">0</div>
+                </div>
+                <div class="score-box" id="timer-box" style="display:none;">
+                    <div class="label">Время</div>
+                    <div class="value" id="timer">60</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="new-game">Новая игра</button>
+            <button class="leaderboard-btn" id="time-mode">⏱ На время</button>
+            <button class="leaderboard-btn" id="daily-challenge">📅 Ежедневный</button>
+            <button class="leaderboard-btn" id="show-leaderboard">🏆 Топ-10</button>
+        </div>
+
+        <div class="game-container">
+            <div class="board" id="board"></div>
+            <div class="game-over" id="game-over" style="display:none;">
+                <h2>Игра окончена!</h2>
+                <button id="retry">Попробовать снова</button>
+            </div>
+        </div>
+
+        <div class="swipe-hint">Свайпайте или используйте стрелки</div>
+    </div>
+
+    <!-- Модальное окно лидерборда -->
+    <div class="modal-overlay" id="lb-modal">
+        <div class="modal">
+            <h2>🏆 Топ-10</h2>
+            <ul class="leaderboard-list" id="lb-list">
+                <li><span class="lb-name">Загрузка...</span><span class="lb-score">—</span></li>
+            </ul>
+            <button class="modal-close" id="show-history" style="margin-top: 8px;">📅 История</button>
+            <button class="modal-close" id="close-lb">Закрыть</button>
+        </div>
+    </div>
+
+    <script>
+        const SIZE = 4;
+        let grid, score, best, gameOver;
+        let dailySeed = null;
+        let timeMode = false;
+        let timeLeft = 60;
+        let timerInterval = null;
+
+        // Детерминированный генератор случайных чисел (seeded RNG)
+        function seededRandom(seed) {
+            let s = seed;
+            return function() {
+                s = (s * 16807 + 0) % 2147483647;
+                return (s - 1) / 2147483646;
+            };
+        }
+
+        // Получить seed дня (на основе даты)
+        function getDailySeed() {
+            const today = new Date();
+            const dayStr = `${today.getFullYear()}-${today.getMonth()+1}-${today.getDate()}`;
+            // Простой хеш строки в число
+            let hash = 0;
+            for (let i = 0; i < dayStr.length; i++) {
+                hash = ((hash << 5) - hash) + dayStr.charCodeAt(i);
+                hash = hash & hash; // Convert to 32bit integer
+            }
+            return Math.abs(hash);
+        }
+
+        // Инициализация
+        function init() {
+            best = parseInt(localStorage.getItem('2048-best')) || 0;
+            document.getElementById('best').textContent = best;
+
+            // Показываем лучший результат на время
+            const bestTime = parseInt(localStorage.getItem('2048-best-time')) || 0;
+            if (bestTime > 0) {
+                document.getElementById('best').textContent += ` ⏱${bestTime}`;
+            }
+
+            createBoard();
+            newGame();
+        }
+
+        function createBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            for (let i = 0; i < SIZE * SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                board.appendChild(cell);
+            }
+        }
+
+        function newGame(seed) {
+            // Останавливаем таймер если был
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+
+            // Очищаем карту тайлов
+            tileMap = {};
+
+            grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+            score = 0;
+            gameOver = false;
+            updateScore();
+            document.getElementById('game-over').style.display = 'none';
+
+            // Скрываем таймер по умолчанию
+            document.getElementById('timer-box').style.display = 'none';
+
+            // Используем seeded random если есть seed
+            const rand = seed ? seededRandom(seed) : Math.random;
+            dailySeed = seed;
+
+            addRandomTile(rand);
+            addRandomTile(rand);
+            render();
+        }
+
+        function startTimer() {
+            timeMode = true;
+            timeLeft = 60;
+            document.getElementById('timer-box').style.display = 'block';
+            document.getElementById('timer').textContent = timeLeft;
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    timeMode = false;
+                    gameOver = true;
+                    document.getElementById('game-over').style.display = 'flex';
+                    document.querySelector('#game-over h2').textContent = '⏱ Время вышло!';
+                    sendResult(score);
+                }
+            }, 1000);
+        }
+
+        function addRandomTile(randFn) {
+            randFn = randFn || Math.random;
+            const empty = [];
+            for (let r = 0; r < SIZE; r++)
+                for (let c = 0; c < SIZE; c++)
+                    if (grid[r][c] === 0) empty.push({ r, c });
+            if (empty.length === 0) return;
+            const { r, c } = empty[Math.floor(randFn() * empty.length)];
+            grid[r][c] = randFn() < 0.9 ? 2 : 4;
+            grid[r][c] = { value: grid[r][c], isNew: true };
+        }
+
+        // Карта тайлов для отслеживания позиций
+        let tileMap = {};
+
+        function render() {
+            const board = document.getElementById('board');
+            const boardRect = board.getBoundingClientRect();
+            const gap = 10;
+            const padding = 10;
+            const cellSize = (boardRect.width - padding * 2 - gap * (SIZE - 1)) / SIZE;
+
+            // Создаём новую карту
+            const newTileMap = {};
+
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = grid[r][c];
+                    if (cell === 0 || cell === null) continue;
+
+                    const value = cell.value || cell;
+                    if (value === 0) continue;
+
+                    const key = `${r}-${c}`;
+                    let tile = tileMap[key];
+
+                    if (!tile) {
+                        // Создаём новый тайл
+                        tile = document.createElement('div');
+                        tile.className = `tile tile-${value <= 2048 ? value : 'super'}`;
+                        if (cell.isNew) tile.classList.add('tile-new');
+                        if (cell.merged) tile.classList.add('tile-merged');
+
+                        tile.style.width = cellSize + 'px';
+                        tile.style.height = cellSize + 'px';
+                        tile.style.fontSize = value < 100 ? '28px' : value < 1000 ? '22px' : '18px';
+                        tile.textContent = value;
+
+                        board.appendChild(tile);
+                    } else {
+                        // Обновляем существующий тайл
+                        tile.className = `tile tile-${value <= 2048 ? value : 'super'}`;
+                        if (cell.isNew) tile.classList.add('tile-new');
+                        if (cell.merged) tile.classList.add('tile-merged');
+                        tile.textContent = value;
+                    }
+
+                    const x = padding + c * (cellSize + gap);
+                    const y = padding + r * (cellSize + gap);
+
+                    tile.style.transform = `translate(${x}px, ${y}px)`;
+                    newTileMap[key] = tile;
+                }
+            }
+
+            // Удаляем тайлы которых нет в новой сетке
+            for (const key in tileMap) {
+                if (!newTileMap[key]) {
+                    tileMap[key].remove();
+                }
+            }
+
+            tileMap = newTileMap;
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            if (score > best) {
+                best = score;
+                localStorage.setItem('2048-best', best);
+                document.getElementById('best').textContent = best;
+            }
+        }
+
+        // Логика движения
+        function slide(row) {
+            let arr = row.filter(v => v !== 0 && v !== null);
+            for (let i = 0; i < arr.length - 1; i++) {
+                const a = arr[i].value || arr[i];
+                const b = arr[i + 1].value || arr[i + 1];
+                if (a === b) {
+                    arr[i] = { value: a * 2, merged: true };
+                    score += a * 2;
+                    arr.splice(i + 1, 1);
+                    i++;
+                }
+            }
+            while (arr.length < SIZE) arr.push(0);
+            return arr;
+        }
+
+        function move(direction) {
+            if (gameOver) return;
+
+            let moved = false;
+            const oldGrid = JSON.stringify(grid.map(r => r.map(c => c.value || c)));
+
+            if (direction === 'left' || direction === 'right') {
+                for (let r = 0; r < SIZE; r++) {
+                    let row = grid[r].map(c => c.value || c);
+                    if (direction === 'right') row.reverse();
+                    row = slide(row);
+                    if (direction === 'right') row.reverse();
+                    grid[r] = row;
+                }
+            } else {
+                for (let c = 0; c < SIZE; c++) {
+                    let col = [];
+                    for (let r = 0; r < SIZE; r++) col.push(grid[r][c].value || grid[r][c]);
+                    if (direction === 'down') col.reverse();
+                    col = slide(col);
+                    if (direction === 'down') col.reverse();
+                    for (let r = 0; r < SIZE; r++) grid[r][c] = col[r];
+                }
+            }
+
+            // Очистка флагов
+            for (let r = 0; r < SIZE; r++)
+                for (let c = 0; c < SIZE; c++)
+                    if (grid[r][c] !== 0 && grid[r][c] !== null) {
+                        grid[r][c].isNew = false;
+                        grid[r][c].merged = false;
+                    }
+
+            const newGrid = JSON.stringify(grid.map(r => r.map(c => c.value || c)));
+            if (oldGrid !== newGrid) {
+                addRandomTile();
+                updateScore();
+                render();
+                checkGameOver();
+            }
+        }
+
+        function checkGameOver() {
+            // Есть ли пустые клетки?
+            for (let r = 0; r < SIZE; r++)
+                for (let c = 0; c < SIZE; c++)
+                    if (grid[r][c] === 0 || grid[r][c] === null) return;
+
+            // Можно ли объединить?
+            for (let r = 0; r < SIZE; r++)
+                for (let c = 0; c < SIZE; c++) {
+                    const val = grid[r][c].value || grid[r][c];
+                    if (c < SIZE - 1) {
+                        const right = grid[r][c + 1].value || grid[r][c + 1];
+                        if (val === right) return;
+                    }
+                    if (r < SIZE - 1) {
+                        const below = grid[r + 1][c].value || grid[r + 1][c];
+                        if (val === below) return;
+                    }
+                }
+
+            gameOver = true;
+            document.getElementById('game-over').style.display = 'flex';
+            sendResult(score);
+        }
+
+        // Управление — клавиатура
+        document.addEventListener('keydown', e => {
+            const map = {
+                ArrowUp: 'up', ArrowDown: 'down',
+                ArrowLeft: 'left', ArrowRight: 'right'
+            };
+            if (map[e.key]) {
+                e.preventDefault();
+                move(map[e.key]);
+            }
+        });
+
+        // Управление — свайпы
+        let touchStartX, touchStartY;
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+        document.addEventListener('touchend', e => {
+            if (!touchStartX || !touchStartY) return;
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            const dy = e.changedTouches[0].clientY - touchStartY;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            if (Math.max(absDx, absDy) < 30) return; // слишком маленький свайп
+
+            if (absDx > absDy) {
+                move(dx > 0 ? 'right' : 'left');
+            } else {
+                move(dy > 0 ? 'down' : 'up');
+            }
+            touchStartX = touchStartY = null;
+        });
+
+        // Кнопки
+        document.getElementById('new-game').addEventListener('click', () => newGame(null));
+        document.getElementById('retry').addEventListener('click', () => newGame(dailySeed));
+
+        // Режим на время
+        document.getElementById('time-mode').addEventListener('click', () => {
+            newGame(null);
+            startTimer();
+        });
+
+        // Ежедневный челлендж
+        document.getElementById('daily-challenge').addEventListener('click', () => {
+            const seed = getDailySeed();
+            const today = new Date().toISOString().split('T')[0];
+            const lastPlay = localStorage.getItem('2048-daily-date');
+
+            if (lastPlay === today) {
+                // Уже играли сегодня — показываем результат
+                const dailyScore = localStorage.getItem('2048-daily-score');
+                alert(`📅 Вы уже играли сегодня!\n\nВаш результат: ${dailyScore || 0} очков`);
+                return;
+            }
+
+            // Начинаем новую игру с daily seed
+            newGame(seed);
+        });
+
+        // Лидерборд
+        const lbModal = document.getElementById('lb-modal');
+        const lbList = document.getElementById('lb-list');
+
+        document.getElementById('show-leaderboard').addEventListener('click', async () => {
+            lbModal.classList.add('active');
+            await fetchLeaderboard();
+        });
+
+        document.getElementById('close-lb').addEventListener('click', () => {
+            lbModal.classList.remove('active');
+        });
+
+        document.getElementById('show-history').addEventListener('click', () => {
+            lbModal.classList.remove('active');
+            showHistory();
+        });
+
+        lbModal.addEventListener('click', (e) => {
+            if (e.target === lbModal) lbModal.classList.remove('active');
+        });
+
+        async function fetchLeaderboard() {
+            lbList.innerHTML = '<li><span class="lb-name">Загрузка...</span><span class="lb-score">—</span></li>';
+
+            // Пытаемся получить данные через Telegram Bot
+            if (window.Telegram && Telegram.WebApp && Telegram.WebApp.initData) {
+                // Отправляем запрос боту через switchInlineQuery или открываем бота
+                const user = Telegram.WebApp.initDataUnsafe?.user;
+                const userName = user ? (user.first_name + (user.last_name ? ' ' + user.last_name : '')) : 'Аноним';
+
+                // Показываем инструкцию если нет API
+                lbList.innerHTML = `
+                    <li><span class="lb-name">📱 Откройте бота</span><span class="lb-score">→</span></li>
+                    <li><span class="lb-name">🏆 Введите /leaderboard</span><span class="lb-score">—</span></li>
+                    <li><span class="lb-name">🎮 Ваш ник: ${userName}</span><span class="lb-score">—</span></li>
+                `;
+
+                // Кнопка открытия бота
+                const btn = document.createElement('button');
+                btn.className = 'modal-close';
+                btn.style.marginTop = '12px';
+                btn.textContent = 'Открыть бота';
+                btn.addEventListener('click', () => {
+                    Telegram.WebApp.switchInlineQuery('leaderboard');
+                });
+                document.querySelector('.modal').appendChild(btn);
+            } else {
+                lbList.innerHTML = '<li><span class="lb-name">Рейтинг недоступен</span><span class="lb-score">—</span></li>';
+            }
+        }
+
+        // Отправка результата при завершении игры
+        function sendResult(score) {
+            // Сохраняем результат ежедневной игры
+            if (dailySeed) {
+                const today = new Date().toISOString().split('T')[0];
+                localStorage.setItem('2048-daily-date', today);
+                localStorage.setItem('2048-daily-score', score);
+
+                // Сохраняем в историю
+                const history = JSON.parse(localStorage.getItem('2048-history') || '[]');
+                history.push({ date: today, score: score, seed: dailySeed });
+                localStorage.setItem('2048-history', JSON.stringify(history.slice(-30))); // последние 30 записей
+            }
+
+            // Сохраняем лучший результат на время
+            if (timeMode) {
+                const bestTime = parseInt(localStorage.getItem('2048-best-time')) || 0;
+                if (score > bestTime) {
+                    localStorage.setItem('2048-best-time', score);
+                }
+            }
+
+            if (window.Telegram && Telegram.WebApp) {
+                const user = Telegram.WebApp.initDataUnsafe?.user;
+                const name = user ? user.first_name : 'Аноним';
+                // Отправляем данные боту через WebApp
+                Telegram.WebApp.sendData(JSON.stringify({
+                    type: 'score',
+                    name: name,
+                    score: score
+                }));
+            }
+        }
+
+        // История ежедневных игр
+        function showHistory() {
+            const history = JSON.parse(localStorage.getItem('2048-history') || '[]');
+            if (history.length === 0) {
+                alert('📅 История пуста. Сыграйте в ежедневный челлендж!');
+                return;
+            }
+
+            let text = '📅 **История (последние 7 дней)**\n\n';
+            const recent = history.slice(-7).reverse();
+            recent.forEach((h, i) => {
+                const day = new Date(h.date);
+                const dayName = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][day.getDay()];
+                text += `${dayName} ${day.getDate()}.${day.getMonth()+1}: ${h.score} очков\n`;
+            });
+
+            alert(text);
+        }
+
+        // Telegram WebApp
+        if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            // Применяем тему Telegram
+            const theme = Telegram.WebApp.themeParams;
+            if (theme.bg_color) {
+                document.body.style.background = theme.bg_color;
+            }
+        }
+
+        // Рендер после загрузки
+        init();
+        window.addEventListener('resize', render);
+    </script>
+</body>
+</html>

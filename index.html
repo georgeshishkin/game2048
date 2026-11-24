@@ -416,7 +416,8 @@
                 timerInterval = null;
             }
 
-            // Очищаем карту тайлов
+            // Удаляем все старые тайлы из DOM
+            document.querySelectorAll('.tile').forEach(t => t.remove());
             tileMap = {};
 
             grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));

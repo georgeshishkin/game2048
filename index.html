@@ -105,6 +105,9 @@
             gap: 10px;
             aspect-ratio: 1;
             position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
         }
 
         .cell {
@@ -736,6 +739,9 @@
                     name: name,
                     score: score
                 }));
+
+                // Показываем уведомление
+                Telegram.WebApp.showAlert(`🎮 Результат: ${score} очков!\n\nОн автоматически сохранён в рейтинг.`);
             }
         }
 
@@ -772,6 +778,10 @@
         // Рендер после загрузки
         init();
         window.addEventListener('resize', render);
+
+        // Принудительный рендер через 200мс (на случай если board ещё не готов)
+        setTimeout(render, 200);
+        setTimeout(render, 500);
     </script>
 </body>
 </html>
